@@ -11,14 +11,16 @@ import (
 
 // Config represents the application configuration.
 type Config struct {
-	Port int `yaml:"port"`
+	Port   int    `yaml:"port"`
+	DBPath string `yaml:"db_path"`
 }
 
 // Load reads the configuration prioritizing: CLI flag > ENV var > YAML > Default
 func Load() (*Config, error) {
 	// 1. Set Defaults
 	cfg := &Config{
-		Port: 12581,
+		Port:   12581,
+		DBPath: "./crafter.db",
 	}
 
 	// 2. Define Command Line Flags
@@ -27,9 +29,11 @@ func Load() (*Config, error) {
 
 	var configPath string
 	var cliPort int
+	var cliDBPath string
 
 	fs.StringVar(&configPath, "config", "", "Path to the yaml config file (default: ./config.yml)")
 	fs.IntVar(&cliPort, "port", 0, "Server port (overrides yaml and env)")
+	fs.StringVar(&cliDBPath, "db-path", "", "Path to the SQLite database file (overrides yaml and env)")
 
 	// Parse flags using os.Args[1:]
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -68,9 +72,17 @@ func Load() (*Config, error) {
 		}
 	}
 
+	envDBPath := os.Getenv("CRAFTER_DB_PATH")
+	if envDBPath != "" {
+		cfg.DBPath = envDBPath
+	}
+
 	// 5. Override from Command Line Flags (Highest Priority)
 	if cliPort != 0 {
 		cfg.Port = cliPort
+	}
+	if cliDBPath != "" {
+		cfg.DBPath = cliDBPath
 	}
 
 	return cfg, nil

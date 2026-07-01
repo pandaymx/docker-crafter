@@ -44,3 +44,11 @@ bin/
 *.out
 vendor/
 docker-crafter
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Build outputs
+server
