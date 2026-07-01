@@ -4,11 +4,34 @@ import (
 	"log"
 	"net/http"
 
+	"docker-crafter/internal/config"
+	"docker-crafter/internal/db"
 	"docker-crafter/internal/docker"
+	"docker-crafter/internal/repository"
+
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	database, err := db.NewDB(cfg.DBPath)
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	log.Printf("Successfully connected to SQLite database at %s", cfg.DBPath)
+
+	// Initialize repositories
+	containerRepo := repository.NewContainerRepository(database)
+	preferenceRepo := repository.NewPreferenceRepository(database)
+
+	// Suppress unused variable warnings for now until we use them in future PRs
+	_ = containerRepo
+	_ = preferenceRepo
+
 	r := gin.Default()
 
 	// Initialize Docker client
