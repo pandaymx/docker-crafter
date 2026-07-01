@@ -1,1 +1,1 @@
-bun --bun oxlint
+bunx lint-staged
