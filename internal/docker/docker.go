@@ -19,12 +19,6 @@ type ContainerInfo struct {
 	Labels map[string]string `json:"labels"`
 }
 
-// ContainerGroupsResponse represents the grouped containers.
-type ContainerGroupsResponse struct {
-	Compose    map[string][]ContainerInfo `json:"compose"`
-	Standalone []ContainerInfo            `json:"standalone"`
-}
-
 // DockerClient interface abstracts the Docker client for easier testing.
 type DockerClient interface {
 	ContainerList(ctx context.Context, options container.ListOptions) ([]container.Summary, error)
@@ -44,17 +38,14 @@ func NewClient() (*Client, error) {
 	return &Client{cli: cli}, nil
 }
 
-// GetGroupedContainers fetches all containers and groups them by compose/standalone.
-func (c *Client) GetGroupedContainers(ctx context.Context) (*ContainerGroupsResponse, error) {
+// GetContainers fetches all containers and returns them as a flat slice.
+func (c *Client) GetContainers(ctx context.Context) ([]ContainerInfo, error) {
 	containers, err := c.cli.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list containers: %w", err)
 	}
 
-	response := &ContainerGroupsResponse{
-		Compose:    make(map[string][]ContainerInfo),
-		Standalone: make([]ContainerInfo, 0),
-	}
+	response := make([]ContainerInfo, 0, len(containers))
 
 	for _, c := range containers {
 		name := ""
@@ -71,12 +62,7 @@ func (c *Client) GetGroupedContainers(ctx context.Context) (*ContainerGroupsResp
 			Labels: c.Labels,
 		}
 
-		projectLabel := c.Labels["com.docker.compose.project"]
-		if projectLabel != "" {
-			response.Compose[projectLabel] = append(response.Compose[projectLabel], info)
-		} else {
-			response.Standalone = append(response.Standalone, info)
-		}
+		response = append(response, info)
 	}
 
 	return response, nil

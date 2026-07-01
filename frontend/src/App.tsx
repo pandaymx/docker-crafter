@@ -1,122 +1,90 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect } from 'react';
+import { useContainers } from './hooks/useContainers';
+import { DesktopView } from './components/DesktopView';
+import { WebView } from './components/WebView';
+import { LayoutTemplate, MonitorSmartphone } from 'lucide-react';
+import './index.css';
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+// Type declaration for Tauri window variable mock
+declare global {
+  interface Window {
+    __TAURI__?: boolean;
+  }
 }
 
-export default App
+type ViewMode = 'desktop' | 'web';
+
+function App() {
+  const { workspaces, loading, error } = useContainers();
+
+  // Environment-Aware Auto Detection
+  const [viewMode, setViewMode] = useState<ViewMode>('web');
+
+  useEffect(() => {
+    // If running in Tauri or screen is wide enough, default to desktop (unless on mobile)
+    const isTauri =
+      typeof window !== 'undefined' && window.__TAURI__ !== undefined;
+    const isMobile = window.innerWidth < 768; // basic Tailwind md breakpoint
+
+    if (isTauri && !isMobile) {
+      setViewMode('desktop');
+    } else {
+      setViewMode('web'); // fallback for web or mobile
+    }
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-950 text-gray-400">
+        Loading containers...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-950 text-red-500">
+        Error: {error}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative h-screen w-full overflow-hidden bg-gray-950">
+      {/* Absolute Header for View Switcher - useful for dev/demo */}
+      <div className="absolute top-4 right-6 z-50 flex items-center bg-gray-800/80 backdrop-blur rounded-full p-1 border border-gray-700 shadow-lg">
+        <button
+          onClick={() => setViewMode('desktop')}
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+            viewMode === 'desktop'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          <MonitorSmartphone size={16} />
+          <span className="hidden sm:inline">Desktop</span>
+        </button>
+        <button
+          onClick={() => setViewMode('web')}
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+            viewMode === 'web'
+              ? 'bg-purple-600 text-white shadow-sm'
+              : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          <LayoutTemplate size={16} />
+          <span className="hidden sm:inline">Swimlanes</span>
+        </button>
+      </div>
+
+      {/* Main View Area */}
+      {viewMode === 'desktop' ? (
+        <DesktopView workspaces={workspaces} />
+      ) : (
+        <WebView workspaces={workspaces} />
+      )}
+    </div>
+  );
+}
+
+export default App;

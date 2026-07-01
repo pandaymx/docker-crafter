@@ -34,9 +34,9 @@ func main() {
 				return
 			}
 
-			response, err := dockerClient.GetGroupedContainers(c.Request.Context())
+			response, err := dockerClient.GetContainers(c.Request.Context())
 			if err != nil {
-				log.Printf("Error: Failed to get grouped containers: %v", err)
+				log.Printf("Error: Failed to get containers: %v", err)
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
