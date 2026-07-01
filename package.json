@@ -1,0 +1,16 @@
+{
+  "type": "module",
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.0",
+    "@commitlint/config-conventional": "^21.2.0",
+    "@types/bun": "latest",
+    "husky": "^9.1.7",
+    "oxlint": "^1.72.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "prepare": "husky"
+  }
+}
