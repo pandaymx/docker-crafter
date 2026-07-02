@@ -19,7 +19,7 @@ func (m *mockDockerClient) ContainerList(ctx context.Context, options container.
 	return m.containers, m.err
 }
 
-func TestGetGroupedContainers(t *testing.T) {
+func TestGetContainers(t *testing.T) {
 	mockContainers := []container.Summary{
 		{
 			ID:     "111",
@@ -76,29 +76,26 @@ func TestGetGroupedContainers(t *testing.T) {
 		},
 	}
 
-	resp, err := cli.GetGroupedContainers(context.Background())
+	resp, err := cli.GetContainers(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 
-	// Check Compose groups
-	assert.Contains(t, resp.Compose, "my-compose-project")
-	assert.Len(t, resp.Compose["my-compose-project"], 2)
-	assert.Equal(t, "111", resp.Compose["my-compose-project"][0].ID)
-	assert.Equal(t, "compose-web-1", resp.Compose["my-compose-project"][0].Name) // Ensure / is removed
+	assert.Len(t, resp, 5)
 
-	assert.Contains(t, resp.Compose, "other-project")
-	assert.Len(t, resp.Compose["other-project"], 1)
-	assert.Equal(t, "another-compose", resp.Compose["other-project"][0].Name)
+	// Check flat list contents
+	assert.Equal(t, "111", resp[0].ID)
+	assert.Equal(t, "compose-web-1", resp[0].Name) // Ensure / is removed
+	assert.Equal(t, "my-compose-project", resp[0].Labels["com.docker.compose.project"])
 
-	// Check Standalone group
-	assert.Len(t, resp.Standalone, 2)
-	assert.Equal(t, "333", resp.Standalone[0].ID)
-	assert.Equal(t, "standalone-redis", resp.Standalone[0].Name)
-	assert.Equal(t, "555", resp.Standalone[1].ID)
-	assert.Equal(t, "no-labels-container", resp.Standalone[1].Name)
+	assert.Equal(t, "333", resp[2].ID)
+	assert.Equal(t, "standalone-redis", resp[2].Name)
+
+	assert.Equal(t, "555", resp[4].ID)
+	assert.Equal(t, "no-labels-container", resp[4].Name)
+	assert.Nil(t, resp[4].Labels)
 }
 
-func TestGetGroupedContainers_Error(t *testing.T) {
+func TestGetContainers_Error(t *testing.T) {
 	expectedErr := errors.New("docker daemon is not running")
 	cli := &Client{
 		cli: &mockDockerClient{
@@ -107,7 +104,7 @@ func TestGetGroupedContainers_Error(t *testing.T) {
 		},
 	}
 
-	resp, err := cli.GetGroupedContainers(context.Background())
+	resp, err := cli.GetContainers(context.Background())
 	assert.Error(t, err)
 	assert.Nil(t, resp)
 	assert.Contains(t, err.Error(), "failed to list containers")
