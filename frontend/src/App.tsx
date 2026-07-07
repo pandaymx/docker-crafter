@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { useContainers } from './hooks/useContainers';
+import { useEffect, useRef, useState } from 'react';
+import { LayoutTemplate, MonitorSmartphone, Settings } from 'lucide-react';
 import { DesktopView } from './components/DesktopView';
 import { WebView } from './components/WebView';
-import { LayoutTemplate, MonitorSmartphone, Settings } from 'lucide-react';
+import { useContainers } from './hooks/useContainers';
 import './index.css';
 
 // Type declaration for Tauri window variable mock

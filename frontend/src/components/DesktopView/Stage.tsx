@@ -1,6 +1,6 @@
+import { Box, Play, RefreshCw, Square } from 'lucide-react';
 import React from 'react';
 import type { Workspace } from '../../types';
-import { Play, Square, RefreshCw, Box } from 'lucide-react';
 
 interface StageProps {
   workspace: Workspace | null;
