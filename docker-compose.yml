@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  docker-crafter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/yourusername/docker-crafter:latest
+    container_name: docker-crafter
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount Docker socket to manage containers
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Mount database file to ensure persistence
+      - ./data:/app/data
+    environment:
+      - CRAFTER_PORT=8080
+      - CRAFTER_DB_PATH=/app/data/crafter.db
