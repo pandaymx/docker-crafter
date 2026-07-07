@@ -1,6 +1,6 @@
+import { Box, Folder, FolderGit2 } from 'lucide-react';
 import React from 'react';
 import type { Workspace } from '../../types';
-import { Folder, FolderGit2, Box } from 'lucide-react';
 
 interface SidebarProps {
   workspaces: Workspace[];

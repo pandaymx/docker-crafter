@@ -1,4 +1,4 @@
-.PHONY: all build build-backend build-frontend run run-backend run-frontend clean test verify format
+.PHONY: all build build-backend build-frontend run run-backend run-frontend clean test verify format lint
 
 # ==============================================================================
 # Variables
@@ -72,7 +72,13 @@ verify:
 		gofmt -l .; \
 		exit 1; \
 	fi
+	@echo "=> Verifying frontend..."
+	@cd frontend && bun run lint && bun run format:check
 	@echo "=> Verification passed"
+
+lint:
+	@echo "=> Linting frontend..."
+	@cd frontend && bun run lint
 
 format:
 	@echo "=> Formatting go code..."

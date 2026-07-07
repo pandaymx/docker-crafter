@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Workspace } from '../../types';
 import { Sidebar } from './Sidebar';
 import { Stage } from './Stage';
