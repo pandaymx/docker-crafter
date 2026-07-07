@@ -30,7 +30,7 @@ all: verify test build
 # ==============================================================================
 # Build
 
-build: build-backend build-frontend
+build: build-frontend build-backend
 
 build-backend:
 	@echo "=> Building backend $(APP_NAME)..."
@@ -41,7 +41,10 @@ build-backend:
 build-frontend:
 	@echo "=> Building frontend..."
 	@cd frontend && bun install --frozen-lockfile && bun run build
-	@echo "=> Frontend built"
+	@echo "=> Copying frontend dist to backend ui..."
+	@rm -rf internal/ui/dist
+	@cp -r frontend/dist internal/ui/dist
+	@echo "=> Frontend built and copied"
 
 # ==============================================================================
 # Run
@@ -86,5 +89,8 @@ format:
 clean:
 	@echo "=> Cleaning..."
 	@rm -rf $(BIN_DIR)
+	@rm -rf internal/ui/dist
+	@mkdir -p internal/ui/dist
+	@echo '<!DOCTYPE html><html><head><title>Placeholder</title></head><body>Frontend not built yet.</body></html>' > internal/ui/dist/index.html
 	@cd frontend && rm -rf dist node_modules
 	@echo "=> Cleaned"

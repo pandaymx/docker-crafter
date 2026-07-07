@@ -4,6 +4,7 @@ node_modules
 # output
 out
 dist
+!internal/ui/dist/
 *.tgz
 
 # code coverage
@@ -51,4 +52,4 @@ docker-crafter
 *.db-wal
 
 # Build outputs
-server
+/server

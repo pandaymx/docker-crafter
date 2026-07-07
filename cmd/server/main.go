@@ -8,6 +8,10 @@ import (
 	"docker-crafter/internal/db"
 	"docker-crafter/internal/docker"
 	"docker-crafter/internal/repository"
+	"docker-crafter/internal/ui"
+	"fmt"
+	"io/fs"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -70,8 +74,58 @@ func main() {
 		})
 	}
 
-	log.Println("Starting server on :8080...")
-	if err := r.Run(":8080"); err != nil {
+	// Serve Frontend
+	uiFS, err := ui.FS()
+	if err != nil {
+		log.Fatalf("Failed to initialize UI filesystem: %v", err)
+	}
+	httpFS := http.FS(uiFS)
+
+	// Serve static files using Gin's StaticFS
+	r.StaticFS("/assets", http.FS(mustSubFS(uiFS, "assets")))
+
+	// Optional files that Vite typically produces in root
+	serveIfExists(r, uiFS, httpFS, "/vite.svg")
+	// You can add more root files here if needed
+
+	r.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+
+		// Do not fallback for API requests
+		if strings.HasPrefix(path, "/api/") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "API route not found"})
+			return
+		}
+
+		// Check if file exists in the UI filesystem
+		if _, err := fs.Stat(uiFS, strings.TrimPrefix(path, "/")); err == nil {
+			c.FileFromFS(path, httpFS)
+			return
+		}
+
+		// Fallback to index.html for SPA routing
+		c.FileFromFS("index.html", httpFS)
+	})
+
+	addr := fmt.Sprintf(":%d", cfg.Port)
+	log.Printf("Starting server on %s...", addr)
+	if err := r.Run(addr); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
+	}
+}
+
+func mustSubFS(f fs.FS, dir string) fs.FS {
+	sub, err := fs.Sub(f, dir)
+	if err != nil {
+		// Assets folder might not exist in the placeholder dist
+		// We return the root if that's the case to prevent crashing
+		return f
+	}
+	return sub
+}
+
+func serveIfExists(r *gin.Engine, f fs.FS, httpFS http.FileSystem, path string) {
+	if _, err := fs.Stat(f, strings.TrimPrefix(path, "/")); err == nil {
+		r.StaticFileFS(path, path, httpFS)
 	}
 }
