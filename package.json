@@ -15,11 +15,9 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx,mjs,cjs}": [
-      "bun --bun oxlint"
-    ],
-    "frontend/**/*.{ts,tsx,js,jsx,mjs,cjs}": [
-      "bunx --cwd frontend biome format --write"
+    "frontend/**/*.{js,ts,tsx,json}": [
+      "bun --cwd frontend oxlint --deny-tmpl",
+      "bun --cwd frontend biome format --write"
     ],
     "*.go": [
       "gofmt -w"

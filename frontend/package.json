@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc && vite build",
     "lint": "oxlint",
-    "preview": "vite preview",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "format:check": "biome check .",
+    "preview": "vite preview"
   },
   "dependencies": {
     "lucide-react": "^1.23.0",
