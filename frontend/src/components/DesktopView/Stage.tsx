@@ -1,12 +1,22 @@
 import { Box, Play, RefreshCw, Square } from 'lucide-react';
 import React from 'react';
+import type { ContainerActionResults } from '../../hooks/useContainers';
 import type { Workspace } from '../../types';
 
 interface StageProps {
   workspace: Workspace | null;
+  performAction: (
+    action: 'start' | 'stop' | 'restart',
+    containerIds: string[],
+  ) => Promise<ContainerActionResults>;
+  actionLoading: boolean;
 }
 
-export const Stage: React.FC<StageProps> = ({ workspace }) => {
+export const Stage: React.FC<StageProps> = ({
+  workspace,
+  performAction,
+  actionLoading,
+}) => {
   if (!workspace) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-500 bg-gray-950">
@@ -28,13 +38,40 @@ export const Stage: React.FC<StageProps> = ({ workspace }) => {
           </h1>
         </div>
         <div className="flex gap-2">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors">
+          <button
+            disabled={actionLoading}
+            onClick={() =>
+              performAction(
+                'start',
+                workspace.containers.map((c) => c.id),
+              )
+            }
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded transition-colors"
+          >
             <Play size={14} /> Start All
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-900 hover:bg-red-800 text-red-100 rounded transition-colors">
+          <button
+            disabled={actionLoading}
+            onClick={() =>
+              performAction(
+                'stop',
+                workspace.containers.map((c) => c.id),
+              )
+            }
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-900 hover:bg-red-800 disabled:opacity-50 text-red-100 rounded transition-colors"
+          >
             <Square size={14} /> Stop All
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-200 rounded transition-colors">
+          <button
+            disabled={actionLoading}
+            onClick={() =>
+              performAction(
+                'restart',
+                workspace.containers.map((c) => c.id),
+              )
+            }
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-200 rounded transition-colors"
+          >
             <RefreshCw size={14} /> Restart
           </button>
         </div>

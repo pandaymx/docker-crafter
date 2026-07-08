@@ -16,7 +16,7 @@
   },
   "lint-staged": {
     "frontend/**/*.{js,ts,tsx,json}": [
-      "bun --cwd frontend oxlint --deny-tmpl",
+      "bun --cwd frontend oxlint --deny-warnings",
       "bun --cwd frontend biome format --write"
     ],
     "*.go": [

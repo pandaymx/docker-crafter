@@ -72,6 +72,36 @@ func main() {
 
 			c.JSON(http.StatusOK, response)
 		})
+
+		api.POST("/containers/action", func(c *gin.Context) {
+			if dockerClient == nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "Docker client is not initialized",
+				})
+				return
+			}
+
+			var req struct {
+				Action       string   `json:"action" binding:"required"`
+				ContainerIDs []string `json:"container_ids" binding:"required"`
+			}
+
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+
+			response, err := dockerClient.PerformAction(c.Request.Context(), req.Action, req.ContainerIDs)
+			if err != nil {
+				log.Printf("Error: Failed to perform action: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			c.JSON(http.StatusOK, response)
+		})
 	}
 
 	// Serve Frontend

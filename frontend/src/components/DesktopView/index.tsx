@@ -1,13 +1,23 @@
 import React, { useEffect, useState } from 'react';
+import type { ContainerActionResults } from '../../hooks/useContainers';
 import type { Workspace } from '../../types';
 import { Sidebar } from './Sidebar';
 import { Stage } from './Stage';
 
 interface DesktopViewProps {
   workspaces: Workspace[];
+  performAction: (
+    action: 'start' | 'stop' | 'restart',
+    containerIds: string[],
+  ) => Promise<ContainerActionResults>;
+  actionLoading: boolean;
 }
 
-export const DesktopView: React.FC<DesktopViewProps> = ({ workspaces }) => {
+export const DesktopView: React.FC<DesktopViewProps> = ({
+  workspaces,
+  performAction,
+  actionLoading,
+}) => {
   const [selectedWs, setSelectedWs] = useState<string | null>(null);
 
   // Auto-select first workspace if none selected
@@ -26,7 +36,11 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ workspaces }) => {
         selectedWorkspace={selectedWs}
         onSelect={setSelectedWs}
       />
-      <Stage workspace={activeWorkspace} />
+      <Stage
+        workspace={activeWorkspace}
+        performAction={performAction}
+        actionLoading={actionLoading}
+      />
     </div>
   );
 };
