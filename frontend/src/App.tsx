@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
 import { LayoutTemplate, MonitorSmartphone, Settings } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { DesktopView } from './components/DesktopView';
 import { WebView } from './components/WebView';
 import { useContainers } from './hooks/useContainers';
@@ -15,7 +15,8 @@ declare global {
 type ViewMode = 'desktop' | 'web';
 
 function App() {
-  const { workspaces, loading, error } = useContainers();
+  const { workspaces, loading, error, performAction, actionLoading } =
+    useContainers();
 
   // Environment-Aware Auto Detection
   const [viewMode, setViewMode] = useState<ViewMode>('web');
@@ -116,7 +117,11 @@ function App() {
 
       {/* Main View Area */}
       {viewMode === 'desktop' ? (
-        <DesktopView workspaces={workspaces} />
+        <DesktopView
+          workspaces={workspaces}
+          performAction={performAction}
+          actionLoading={actionLoading}
+        />
       ) : (
         <WebView workspaces={workspaces} />
       )}

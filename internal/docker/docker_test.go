@@ -13,10 +13,36 @@ import (
 type mockDockerClient struct {
 	containers []container.Summary
 	err        error
+	actionErr  error
+	actionLog  []string
 }
 
 func (m *mockDockerClient) ContainerList(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
 	return m.containers, m.err
+}
+
+func (m *mockDockerClient) ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error {
+	m.actionLog = append(m.actionLog, "start:"+containerID)
+	if m.actionErr != nil && containerID == "fail" {
+		return m.actionErr
+	}
+	return nil
+}
+
+func (m *mockDockerClient) ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error {
+	m.actionLog = append(m.actionLog, "stop:"+containerID)
+	if m.actionErr != nil && containerID == "fail" {
+		return m.actionErr
+	}
+	return nil
+}
+
+func (m *mockDockerClient) ContainerRestart(ctx context.Context, containerID string, options container.StopOptions) error {
+	m.actionLog = append(m.actionLog, "restart:"+containerID)
+	if m.actionErr != nil && containerID == "fail" {
+		return m.actionErr
+	}
+	return nil
 }
 
 func TestGetContainers(t *testing.T) {
@@ -109,4 +135,40 @@ func TestGetContainers_Error(t *testing.T) {
 	assert.Nil(t, resp)
 	assert.Contains(t, err.Error(), "failed to list containers")
 	assert.Contains(t, err.Error(), expectedErr.Error())
+}
+
+func TestPerformAction(t *testing.T) {
+	mockCli := &mockDockerClient{
+		actionErr: errors.New("action failed"),
+	}
+	cli := &Client{cli: mockCli}
+
+	ctx := context.Background()
+
+	// Test successful actions
+	res, err := cli.PerformAction(ctx, "start", []string{"c1", "c2"})
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Len(t, res.Successful, 2)
+	assert.Len(t, res.Failed, 0)
+	assert.Equal(t, []string{"start:c1", "start:c2"}, mockCli.actionLog)
+
+	// Test partial failure
+	mockCli.actionLog = nil // reset
+	res, err = cli.PerformAction(ctx, "stop", []string{"c1", "fail", "c3"})
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Len(t, res.Successful, 2)
+	assert.Len(t, res.Failed, 1)
+	assert.Equal(t, "fail", res.Failed[0].ContainerID)
+	assert.Equal(t, "action failed", res.Failed[0].Error)
+	assert.Equal(t, []string{"stop:c1", "stop:fail", "stop:c3"}, mockCli.actionLog)
+
+	// Test invalid action
+	mockCli.actionLog = nil // reset
+	res, err = cli.PerformAction(ctx, "invalid", []string{"c1"})
+	assert.Error(t, err)
+	assert.Nil(t, res)
+	assert.Contains(t, err.Error(), "invalid action: invalid")
+	assert.Len(t, mockCli.actionLog, 0)
 }

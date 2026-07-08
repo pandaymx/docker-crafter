@@ -22,6 +22,9 @@ type ContainerInfo struct {
 // DockerClient interface abstracts the Docker client for easier testing.
 type DockerClient interface {
 	ContainerList(ctx context.Context, options container.ListOptions) ([]container.Summary, error)
+	ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error
+	ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error
+	ContainerRestart(ctx context.Context, containerID string, options container.StopOptions) error
 }
 
 // Client wraps the Docker client.
@@ -66,4 +69,49 @@ func (c *Client) GetContainers(ctx context.Context) ([]ContainerInfo, error) {
 	}
 
 	return response, nil
+}
+
+// ActionError represents an error that occurred during a container action.
+type ActionError struct {
+	ContainerID string `json:"container_id"`
+	Error       string `json:"error"`
+}
+
+// ContainerActionResults contains the results of a batch container action.
+type ContainerActionResults struct {
+	Successful []string      `json:"successful"`
+	Failed     []ActionError `json:"failed"`
+}
+
+// PerformAction executes a specified action (start, stop, restart) on a list of containers.
+func (c *Client) PerformAction(ctx context.Context, action string, containerIDs []string) (*ContainerActionResults, error) {
+	results := &ContainerActionResults{
+		Successful: make([]string, 0),
+		Failed:     make([]ActionError, 0),
+	}
+
+	for _, id := range containerIDs {
+		var err error
+		switch action {
+		case "start":
+			err = c.cli.ContainerStart(ctx, id, container.StartOptions{})
+		case "stop":
+			err = c.cli.ContainerStop(ctx, id, container.StopOptions{})
+		case "restart":
+			err = c.cli.ContainerRestart(ctx, id, container.StopOptions{})
+		default:
+			return nil, fmt.Errorf("invalid action: %s", action)
+		}
+
+		if err != nil {
+			results.Failed = append(results.Failed, ActionError{
+				ContainerID: id,
+				Error:       err.Error(),
+			})
+		} else {
+			results.Successful = append(results.Successful, id)
+		}
+	}
+
+	return results, nil
 }
