@@ -8,13 +8,21 @@ services:
     image: ghcr.io/yourusername/docker-crafter:latest
     container_name: docker-crafter
     restart: unless-stopped
+    group_add:
+      - "${DOCKER_GID:-999}"
     ports:
       - "8080:8080"
     volumes:
       # Mount Docker socket to manage containers
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Mount database file to ensure persistence
+      # Note: For host-mounted volumes like `./data`, you may need to chown -R 1000:1000 ./data
       - ./data:/app/data
+      # Alternatively, you can use a named volume which will automatically initialize permissions:
+      # - crafter-data:/app/data
     environment:
       - CRAFTER_PORT=8080
       - CRAFTER_DB_PATH=/app/data/crafter.db
+
+# volumes:
+#   crafter-data:

@@ -35,10 +35,17 @@ FROM alpine:3.21
 WORKDIR /app
 
 # Install CA certificates for HTTPS requests and tzdata for timezones
-RUN apk add --no-cache ca-certificates tzdata
+# Create non-root user and group, and set permissions
+RUN apk add --no-cache ca-certificates tzdata && \
+    addgroup -g 1000 crafter && \
+    adduser -u 1000 -G crafter -h /app -D crafter && \
+    chown -R crafter:crafter /app
 
 # Copy the compiled binary
-COPY --from=backend-builder /app/bin/docker-crafter /app/docker-crafter
+COPY --from=backend-builder --chown=crafter:crafter /app/bin/docker-crafter /app/docker-crafter
+
+# Run as non-root user
+USER crafter:crafter
 
 # Expose the API port
 EXPOSE 8080
