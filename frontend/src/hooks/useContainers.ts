@@ -7,7 +7,11 @@ import type {
 } from '../types';
 
 // Helper to determine health
-const getHealthStatus = (c: ContainerInfo): HealthStatus => {
+export const getHealthStatus = (c: ContainerInfo): HealthStatus => {
+  if (!c || !c.state || typeof c.status !== 'string') {
+    return 'stopped';
+  }
+
   if (c.state === 'running') {
     if (c.status.toLowerCase().includes('unhealthy')) {
       return 'unhealthy';
