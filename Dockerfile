@@ -39,6 +39,7 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates tzdata && \
     addgroup -g 1000 crafter && \
     adduser -u 1000 -G crafter -h /app -D crafter && \
+    mkdir -p /app/data && \
     chown -R crafter:crafter /app
 
 # Copy the compiled binary
