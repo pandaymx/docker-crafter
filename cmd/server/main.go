@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"strings"
 
+	"github.com/gin-contrib/secure"
 	"github.com/gin-gonic/gin"
 )
 
@@ -37,6 +38,16 @@ func main() {
 	_ = preferenceRepo
 
 	r := gin.Default()
+
+	// Apply basic security headers middleware
+	r.Use(secure.New(secure.Config{
+		BrowserXssFilter:      true,
+		ContentTypeNosniff:    true,
+		FrameDeny:             true,
+		STSSeconds:            31536000,
+		STSIncludeSubdomains:  true,
+		ContentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;",
+	}))
 
 	// Initialize Docker client
 	dockerClient, err := docker.NewClient()

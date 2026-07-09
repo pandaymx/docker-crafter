@@ -4,6 +4,7 @@ go 1.26.4
 
 require (
 	github.com/docker/docker v28.5.2+incompatible
+	github.com/gin-contrib/secure v1.1.3
 	github.com/gin-gonic/gin v1.12.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/goccy/go-yaml v1.19.2
