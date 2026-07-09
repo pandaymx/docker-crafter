@@ -14,7 +14,9 @@ GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
 # TODO: Add your specific environment variables here if needed
 # e.g. export CRAFTER_PORT=8080
-ENV_VARS := CGO_ENABLED=0
+ENV_VARS := CGO_ENABLED=0 \
+            CRAFTER_PORT=8080 \
+            CRAFTER_DB_PATH=/app/data/crafter.db
 
 # Allow overriding from command line, e.g., make build TAGS=pro
 TAGS ?=
