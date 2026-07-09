@@ -16,9 +16,9 @@ GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 # e.g. export CRAFTER_PORT=8080
 ENV_VARS := CGO_ENABLED=0
 
-# TODO: Add your specific build tags here if needed
-# e.g. BUILD_TAGS := -tags="pro"
-BUILD_TAGS :=
+# Allow overriding from command line, e.g., make build TAGS=pro
+TAGS ?=
+BUILD_TAGS := $(if $(TAGS),-tags="$(TAGS)",)
 
 LDFLAGS := -ldflags "-X main.Version=$(GIT_TAG) -X main.Commit=$(GIT_COMMIT) -s -w"
 
