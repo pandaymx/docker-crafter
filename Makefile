@@ -12,8 +12,6 @@ MAIN_PATH := cmd/server/main.go
 GIT_TAG := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
-# TODO: Add your specific environment variables here if needed
-# e.g. export CRAFTER_PORT=8080
 ENV_VARS := CGO_ENABLED=0 \
             CRAFTER_PORT=8080 \
             CRAFTER_DB_PATH=/app/data/crafter.db
