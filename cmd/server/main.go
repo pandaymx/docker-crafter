@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"context"
 	"docker-crafter/internal/config"
 	"docker-crafter/internal/db"
 	"docker-crafter/internal/docker"
@@ -14,8 +15,10 @@ import (
 	"io/fs"
 	"strings"
 
+	"docker-crafter/internal/ws"
 	"github.com/gin-contrib/secure"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 func main() {
@@ -151,6 +154,67 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"message": "Action performed successfully"})
 		})
 
+		api.GET("/containers/:id/logs", activityTracker, func(c *gin.Context) {
+			if dockerService == nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "Docker service is not initialized",
+				})
+				return
+			}
+
+			id := c.Param("id")
+			tail := c.DefaultQuery("tail", "100")
+			logs, err := dockerService.GetContainerLogs(c.Request.Context(), id, tail)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"logs": logs})
+		})
+
+		api.GET("/containers/:id/logs/stream", activityTracker, func(c *gin.Context) {
+			if dockerService == nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "Docker service is not initialized",
+				})
+				return
+			}
+
+			id := c.Param("id")
+			tail := c.DefaultQuery("tail", "100")
+
+			upgrader := websocket.Upgrader{
+				CheckOrigin: func(r *http.Request) bool { return true }, // In production, should validate origin
+			}
+
+			conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+			if err != nil {
+				logger.Errorf("WebSocket upgrade failed: %v", err)
+				return
+			}
+			defer conn.Close()
+
+			ctx, cancel := context.WithCancel(c.Request.Context())
+			defer cancel()
+
+			// Start keepalive
+			ws.StartKeepAlive(ctx, conn)
+
+			// Continuous read to handle control frames (ping/pong/close)
+			go func() {
+				for {
+					if _, _, err := conn.ReadMessage(); err != nil {
+						cancel()
+						return
+					}
+				}
+			}()
+
+			err = dockerService.StreamContainerLogs(ctx, id, tail, conn)
+			if err != nil {
+				conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error: %v", err)))
+			}
+		})
 		api.GET("/projects", activityTracker, func(c *gin.Context) {
 			if dockerService == nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
