@@ -9,18 +9,40 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
+// DockerEngineConfig saves the connection configuration for a single Docker daemon.
+type DockerEngineConfig struct {
+	Name             string `yaml:"name"`
+	Host             string `yaml:"host"` // empty string = auto local probing
+	TLSVerify        bool   `yaml:"tls_verify"`
+	CertPath         string `yaml:"cert_path"`          // File path for TLS
+	CACertBase64     string `yaml:"ca_cert_base64"`     // Base64 memory for TLS
+	ClientCertBase64 string `yaml:"client_cert_base64"` // Base64 memory for TLS
+	ClientKeyBase64  string `yaml:"client_key_base64"`  // Base64 memory for TLS
+}
+
+// CorsConfig saves CORS configuration.
+type CorsConfig struct {
+	AllowOrigin  string `yaml:"allow_origin"`
+	AllowMethods string `yaml:"allow_methods"`
+	AllowHeaders string `yaml:"allow_headers"`
+}
+
 // Config represents the application configuration.
 type Config struct {
-	Port   int    `yaml:"port"`
-	DBPath string `yaml:"db_path"`
+	Port          int                  `yaml:"port"`
+	DBPath        string               `yaml:"db_path"`
+	LogLevel      string               `yaml:"log_level"`
+	DockerEngines []DockerEngineConfig `yaml:"docker_engines"`
+	CORS          CorsConfig           `yaml:"cors"`
 }
 
 // Load reads the configuration prioritizing: CLI flag > ENV var > YAML > Default
 func Load() (*Config, error) {
 	// 1. Set Defaults
 	cfg := &Config{
-		Port:   12581,
-		DBPath: "./crafter.db",
+		Port:     12581,
+		DBPath:   "./crafter.db",
+		LogLevel: "INFO",
 	}
 
 	// 2. Define Command Line Flags
@@ -83,6 +105,16 @@ func Load() (*Config, error) {
 	}
 	if cliDBPath != "" {
 		cfg.DBPath = cliDBPath
+	}
+
+	// 6. Ensure at least one Docker engine exists
+	if len(cfg.DockerEngines) == 0 {
+		cfg.DockerEngines = []DockerEngineConfig{
+			{
+				Name: "local",
+				Host: "",
+			},
+		}
 	}
 
 	return cfg, nil

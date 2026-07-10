@@ -1,0 +1,12 @@
+feat(docker): implement multi-engine docker service and stats manager
+
+- Create internal/logger with levelled logging (DEBUG, INFO, WARN, ERROR)
+- Add DockerEngines and CORS config fields to internal/config
+- Create internal/middleware/cors.go for dynamic CORS reflection
+- Create internal/docker/service.go implementing ContainerManager
+- Support connection to multiple docker engines (local and remote TLS)
+- Implement stats manager with dynamic 2s/15s polling based on activity
+- Implement docker event listeners to instantly trigger stats refresh
+- Implement GetProjectWorkspaces to aggregate containers across engines
+- Add POST /api/v1/containers/:id/action route for single container action
+- Update cmd/server/main.go to initialize the new multi-engine service
