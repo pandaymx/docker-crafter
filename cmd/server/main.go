@@ -7,6 +7,8 @@ import (
 	"docker-crafter/internal/config"
 	"docker-crafter/internal/db"
 	"docker-crafter/internal/docker"
+	"docker-crafter/internal/logger"
+	"docker-crafter/internal/middleware"
 	"docker-crafter/internal/ui"
 	"fmt"
 	"io/fs"
@@ -22,13 +24,19 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
+	logger.SetLevel(cfg.LogLevel)
+
 	_, err = db.NewDB(cfg.DBPath)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
-	log.Printf("Successfully connected to SQLite database at %s", cfg.DBPath)
+	logger.Infof("Successfully connected to SQLite database at %s", cfg.DBPath)
 
 	r := gin.Default()
+
+	if cfg.CORS.AllowOrigin != "" {
+		r.Use(middleware.CORSMiddleware(cfg.CORS))
+	}
 
 	// Apply basic security headers middleware
 	r.Use(secure.New(secure.Config{
@@ -40,11 +48,19 @@ func main() {
 		ContentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;",
 	}))
 
-	// Initialize Docker client
-	dockerClient, err := docker.NewClient()
+	// Initialize Docker service
+	dockerService, err := docker.NewService(cfg.DockerEngines)
 	if err != nil {
 		// Log the error but don't crash, as we want to gracefully degrade if Docker is missing
-		log.Printf("Warning: Failed to initialize Docker client: %v", err)
+		logger.Warnf("Warning: Failed to initialize Docker service: %v", err)
+	}
+
+	// Activity tracker middleware for docker endpoints
+	activityTracker := func(c *gin.Context) {
+		if ds, ok := dockerService.(interface{ UpdateLastRequestTime() }); ok {
+			ds.UpdateLastRequestTime()
+		}
+		c.Next()
 	}
 
 	r.GET("/ping", func(c *gin.Context) {
@@ -55,17 +71,17 @@ func main() {
 
 	api := r.Group("/api/v1")
 	{
-		api.GET("/containers", func(c *gin.Context) {
-			if dockerClient == nil {
+		api.GET("/containers", activityTracker, func(c *gin.Context) {
+			if dockerService == nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "Docker client is not initialized",
+					"error": "Docker service is not initialized",
 				})
 				return
 			}
 
-			response, err := dockerClient.GetContainers(c.Request.Context())
+			response, err := dockerService.GetContainers(c.Request.Context())
 			if err != nil {
-				log.Printf("Error: Failed to get containers: %v", err)
+				logger.Errorf("Failed to get containers: %v", err)
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
@@ -75,10 +91,10 @@ func main() {
 			c.JSON(http.StatusOK, response)
 		})
 
-		api.POST("/containers/action", func(c *gin.Context) {
-			if dockerClient == nil {
+		api.POST("/containers/action", activityTracker, func(c *gin.Context) {
+			if dockerService == nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "Docker client is not initialized",
+					"error": "Docker service is not initialized",
 				})
 				return
 			}
@@ -93,9 +109,59 @@ func main() {
 				return
 			}
 
-			response, err := dockerClient.PerformAction(c.Request.Context(), req.Action, req.ContainerIDs)
+			response, err := dockerService.PerformAction(c.Request.Context(), req.Action, req.ContainerIDs)
 			if err != nil {
-				log.Printf("Error: Failed to perform action: %v", err)
+				logger.Errorf("Failed to perform action: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			c.JSON(http.StatusOK, response)
+		})
+
+		api.POST("/containers/:id/action", activityTracker, func(c *gin.Context) {
+			if dockerService == nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "Docker service is not initialized",
+				})
+				return
+			}
+
+			id := c.Param("id")
+			var req struct {
+				Action string `json:"action" binding:"required"`
+			}
+
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+
+			err := dockerService.ContainerAction(c.Request.Context(), id, req.Action)
+			if err != nil {
+				logger.Errorf("Failed to perform action on container %s: %v", id, err)
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"message": "Action performed successfully"})
+		})
+
+		api.GET("/projects", activityTracker, func(c *gin.Context) {
+			if dockerService == nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "Docker service is not initialized",
+				})
+				return
+			}
+
+			response, err := dockerService.GetProjectWorkspaces(c.Request.Context())
+			if err != nil {
+				logger.Errorf("Failed to get projects: %v", err)
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
