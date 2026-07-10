@@ -1,19 +1,41 @@
 import React from 'react';
-import type { Workspace } from '../../types';
+import type { ContainerActionResults } from '../../hooks/useContainers';
+import type { ProjectWorkspace } from '../../types';
 import { KanbanBoard } from './KanbanBoard';
 
 interface WebViewProps {
-  workspaces: Workspace[];
+  workspaces: ProjectWorkspace[];
+  collapsedWorkspaces: Record<string, boolean>;
+  onToggleCollapse: (projectName: string) => void;
+  performSingleAction: (
+    id: string,
+    action: string,
+    name: string,
+  ) => Promise<void>;
+  performBatchAction: (
+    action: string,
+    containerIds?: string[],
+    projectName?: string,
+  ) => Promise<ContainerActionResults>;
 }
 
-export const WebView: React.FC<WebViewProps> = ({ workspaces }) => {
+export const WebView: React.FC<WebViewProps> = ({
+  workspaces,
+  collapsedWorkspaces,
+  onToggleCollapse,
+  performSingleAction,
+  performBatchAction,
+}) => {
   return (
-    <div className="flex flex-col h-screen w-full bg-[#0f1115]">
-      <header className="h-14 border-b border-gray-800 bg-[#16191f] flex items-center px-6 shrink-0">
-        <h1 className="text-lg font-bold text-gray-200">Container Swimlanes</h1>
-      </header>
+    <div className="flex flex-col h-full w-full bg-slate-950 font-sans">
       <div className="flex-1 overflow-hidden">
-        <KanbanBoard workspaces={workspaces} />
+        <KanbanBoard
+          workspaces={workspaces}
+          collapsedWorkspaces={collapsedWorkspaces}
+          onToggleCollapse={onToggleCollapse}
+          performSingleAction={performSingleAction}
+          performBatchAction={performBatchAction}
+        />
       </div>
     </div>
   );

@@ -4,11 +4,11 @@ export interface ContainerInfo {
   image: string;
   state: string;
   status: string;
+  ports: string[] | null;
   labels: Record<string, string>;
-  ports?: string[] | null;
-  cpuUsage?: number;
-  memoryUsage?: number;
-  memoryLimit?: number;
+  cpuUsage: number;
+  memoryUsage: number;
+  memoryLimit: number;
 }
 
 export type HealthStatus = 'running' | 'unhealthy' | 'stopped';
@@ -33,13 +33,13 @@ export interface ProjectWorkspace {
 }
 
 export interface LogMessage {
-  type: "stdout" | "stderr";
+  type: 'stdout' | 'stderr';
   data: string;
 }
 
 export type TerminalMessage =
-  | { type: "input"; data: string }
-  | { type: "resize"; cols: number; rows: number };
+  | { type: 'input'; data: string }
+  | { type: 'resize'; cols: number; rows: number };
 
 export interface DockerEvent {
   action: string;
