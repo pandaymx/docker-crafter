@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -21,6 +22,8 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/gorilla/websocket"
 )
 
 type dockerService struct {
@@ -580,7 +583,50 @@ func (s *dockerService) GetContainerLogs(ctx context.Context, id string, tail st
 }
 
 func (s *dockerService) ContainerExec(ctx context.Context, id string, cmd []string) (stdout string, stderr string, exitCode int, err error) {
-	return "", "", 0, fmt.Errorf("not implemented")
+	var targetCli *client.Client
+
+	// Find the container across all engines
+	for _, cli := range s.clients {
+		_, inspectErr := cli.ContainerInspect(ctx, id)
+		if inspectErr == nil {
+			targetCli = cli
+			break
+		}
+	}
+
+	if targetCli == nil {
+		return "", "", 0, fmt.Errorf("container %s not found on any connected engine", id)
+	}
+
+	execConfig := container.ExecOptions{
+		Cmd:          cmd,
+		AttachStdout: true,
+		AttachStderr: true,
+	}
+
+	execID, err := targetCli.ContainerExecCreate(ctx, id, execConfig)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	resp, err := targetCli.ContainerExecAttach(ctx, execID.ID, container.ExecAttachOptions{})
+	if err != nil {
+		return "", "", 0, err
+	}
+	defer resp.Close()
+
+	var outBuf, errBuf bytes.Buffer
+	_, err = stdcopy.StdCopy(&outBuf, &errBuf, resp.Reader)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	execInspect, err := targetCli.ContainerExecInspect(ctx, execID.ID)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	return outBuf.String(), errBuf.String(), execInspect.ExitCode, nil
 }
 
 func (s *dockerService) StreamContainerLogs(ctx context.Context, id string, tail string, ws WebSocketWriter) error {
@@ -588,7 +634,126 @@ func (s *dockerService) StreamContainerLogs(ctx context.Context, id string, tail
 }
 
 func (s *dockerService) StreamTerminal(ctx context.Context, id string, shell string, ws WebSocketConn) error {
-	return fmt.Errorf("not implemented")
+	s.reqMutex.Lock()
+	s.wsCount++
+	s.reqMutex.Unlock()
+	defer func() {
+		s.reqMutex.Lock()
+		s.wsCount--
+		s.reqMutex.Unlock()
+	}()
+
+	for _, cli := range s.clients {
+		_, err := cli.ContainerInspect(ctx, id)
+		if err != nil {
+			continue
+		}
+
+		var cmd []string
+		switch shell {
+		case "bash", "sh", "zsh":
+			cmd = []string{shell}
+		default:
+			cmd = []string{"sh", "-c", "exec bash || exec sh"}
+		}
+
+		execConfig := container.ExecOptions{
+			Cmd:          cmd,
+			AttachStdin:  true,
+			AttachStdout: true,
+			AttachStderr: true,
+			Tty:          true,
+		}
+		execID, err := cli.ContainerExecCreate(ctx, id, execConfig)
+		if err != nil {
+			return err
+		}
+
+		resp, err := cli.ContainerExecAttach(ctx, execID.ID, container.ExecAttachOptions{
+			Tty: true,
+		})
+		if err != nil {
+			return err
+		}
+		defer resp.Close()
+
+		errChan := make(chan error, 2)
+
+		go func() {
+			buf := make([]byte, 8192)
+			for {
+				n, err := resp.Reader.Read(buf)
+				if n > 0 {
+					if writeErr := ws.WriteMessage(2, buf[:n]); writeErr != nil {
+						errChan <- writeErr
+						return
+					}
+				}
+				if err != nil {
+					errChan <- err
+					return
+				}
+			}
+		}()
+
+		go func() {
+			for {
+				messageType, p, err := ws.ReadMessage()
+				if err != nil {
+					errChan <- err
+					return
+				}
+
+				if messageType == 1 || messageType == 2 {
+					var payload struct {
+						Type string `json:"type"`
+						Data string `json:"data"`
+						Cols int    `json:"cols"`
+						Rows int    `json:"rows"`
+					}
+
+					if jsonErr := json.Unmarshal(p, &payload); jsonErr == nil && payload.Type != "" {
+						if payload.Type == "resize" {
+							_ = cli.ContainerExecResize(ctx, execID.ID, container.ResizeOptions{
+								Height: uint(payload.Rows),
+								Width:  uint(payload.Cols),
+							})
+							continue
+						} else if payload.Type == "input" {
+							_, writeErr := resp.Conn.Write([]byte(payload.Data))
+							if writeErr != nil {
+								errChan <- writeErr
+								return
+							}
+							continue
+						}
+					}
+
+					_, writeErr := resp.Conn.Write(p)
+					if writeErr != nil {
+						errChan <- writeErr
+						return
+					}
+				}
+			}
+		}()
+
+		select {
+		case <-ctx.Done():
+			ws.Close()
+			return ctx.Err()
+		case err := <-errChan:
+			if err == io.EOF {
+				closeMsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Process exited")
+				_ = ws.WriteControl(websocket.CloseMessage, closeMsg, time.Now().Add(time.Second))
+				ws.Close()
+				return nil
+			}
+			ws.Close()
+			return err
+		}
+	}
+	return fmt.Errorf("container %s not found", id)
 }
 
 func (s *dockerService) SubscribeEvents() <-chan DockerEvent {
