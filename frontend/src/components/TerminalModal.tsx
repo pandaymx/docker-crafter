@@ -1,11 +1,17 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Terminal as TerminalIcon, X, Wifi, WifiOff, Loader2 } from "lucide-react";
-import { Terminal } from "@xterm/xterm";
-import { FitAddon } from "@xterm/addon-fit";
-import "@xterm/xterm/css/xterm.css";
-import { Button } from "./ui/Button";
-import { cn } from "../utils/cn";
+import { FitAddon } from '@xterm/addon-fit';
+import { Terminal } from '@xterm/xterm';
+import {
+  Loader2,
+  Terminal as TerminalIcon,
+  Wifi,
+  WifiOff,
+  X,
+} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import '@xterm/xterm/css/xterm.css';
+import { cn } from '../utils/cn';
+import { Button } from './ui/Button';
 
 export interface TerminalModalProps {
   containerId: string;
@@ -13,9 +19,13 @@ export interface TerminalModalProps {
   onClose: () => void;
 }
 
-type ShellType = "auto" | "bash" | "sh" | "zsh";
+type ShellType = 'auto' | 'bash' | 'sh' | 'zsh';
 
-export function TerminalModal({ containerId, containerName, onClose }: TerminalModalProps) {
+export function TerminalModal({
+  containerId,
+  containerName,
+  onClose,
+}: TerminalModalProps) {
   const { t } = useTranslation();
 
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -23,8 +33,10 @@ export function TerminalModal({ containerId, containerName, onClose }: TerminalM
   const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
-  const [wsStatus, setWsStatus] = useState<"connecting" | "connected" | "disconnected" | "error">("connecting");
-  const [shellType, setShellType] = useState<ShellType>("auto");
+  const [wsStatus, setWsStatus] = useState<
+    'connecting' | 'connected' | 'disconnected' | 'error'
+  >('connecting');
+  const [shellType, setShellType] = useState<ShellType>('auto');
 
   // Setup terminal and connection
   useEffect(() => {
@@ -34,11 +46,11 @@ export function TerminalModal({ containerId, containerName, onClose }: TerminalM
     const term = new Terminal({
       cursorBlink: true,
       theme: {
-        background: "#09090b", // zinc-950
-        foreground: "#d4d4d8", // zinc-300
-        cursor: "#22d3ee",     // cyan-400
+        background: '#09090b', // zinc-950
+        foreground: '#d4d4d8', // zinc-300
+        cursor: '#22d3ee', // cyan-400
       },
-      fontFamily: "monospace",
+      fontFamily: 'monospace',
       fontSize: 14,
     });
 
@@ -57,23 +69,25 @@ export function TerminalModal({ containerId, containerName, onClose }: TerminalM
         wsRef.current.close();
       }
 
-      setWsStatus("connecting");
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const shellParam = shellType !== "auto" ? `?shell=${shellType}` : "";
+      setWsStatus('connecting');
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const shellParam = shellType !== 'auto' ? `?shell=${shellType}` : '';
       const url = `${protocol}//${window.location.host}/api/v1/containers/${containerId}/terminal${shellParam}`;
 
       const ws = new WebSocket(url);
-      ws.binaryType = "arraybuffer"; // Important for binary messages
+      ws.binaryType = 'arraybuffer'; // Important for binary messages
       wsRef.current = ws;
 
       ws.onopen = () => {
-        setWsStatus("connected");
+        setWsStatus('connected');
         // Send initial resize
-        ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
+        ws.send(
+          JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }),
+        );
       };
 
       ws.onmessage = (event) => {
-        if (typeof event.data === "string") {
+        if (typeof event.data === 'string') {
           term.write(event.data);
         } else if (event.data instanceof ArrayBuffer) {
           term.write(new Uint8Array(event.data));
@@ -81,13 +95,13 @@ export function TerminalModal({ containerId, containerName, onClose }: TerminalM
       };
 
       ws.onclose = (event) => {
-        setWsStatus("disconnected");
-        const reason = event.reason || "Connection closed";
+        setWsStatus('disconnected');
+        const reason = event.reason || 'Connection closed';
         term.write(`\r\n\x1b[33m[${reason}]\x1b[0m\r\n`);
       };
 
       ws.onerror = () => {
-        setWsStatus("error");
+        setWsStatus('error');
       };
     };
 
@@ -96,14 +110,14 @@ export function TerminalModal({ containerId, containerName, onClose }: TerminalM
     // 3. Handle terminal input
     const onDataDisposable = term.onData((data) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: "input", data }));
+        wsRef.current.send(JSON.stringify({ type: 'input', data }));
       }
     });
 
     // 4. Handle terminal resize events (when fitAddon.fit() changes term size)
     const onResizeDisposable = term.onResize(({ cols, rows }) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: "resize", cols, rows }));
+        wsRef.current.send(JSON.stringify({ type: 'resize', cols, rows }));
       }
     });
 
@@ -113,11 +127,11 @@ export function TerminalModal({ containerId, containerName, onClose }: TerminalM
         fitAddonRef.current.fit();
       }
     };
-    window.addEventListener("resize", handleResize);
+    window.addEventListener('resize', handleResize);
 
     // Cleanup
     return () => {
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener('resize', handleResize);
       onDataDisposable.dispose();
       onResizeDisposable.dispose();
 
@@ -136,28 +150,40 @@ export function TerminalModal({ containerId, containerName, onClose }: TerminalM
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="flex flex-col w-full max-w-5xl h-[80vh] bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden">
-
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-900/50">
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-medium text-zinc-100 truncate flex items-center gap-2">
               <TerminalIcon className="w-4 h-4 text-zinc-400" />
-              {t("terminalModal.title", { name: containerName })}
+              {t('terminalModal.title', { name: containerName })}
             </h2>
             <div className="flex items-center gap-1.5 text-xs">
-              {wsStatus === "connected" && <Wifi className="w-3.5 h-3.5 text-emerald-400" />}
-              {wsStatus === "connecting" && <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />}
-              {(wsStatus === "disconnected" || wsStatus === "error") && <WifiOff className="w-3.5 h-3.5 text-rose-400" />}
+              {wsStatus === 'connected' && (
+                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+              )}
+              {wsStatus === 'connecting' && (
+                <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />
+              )}
+              {(wsStatus === 'disconnected' || wsStatus === 'error') && (
+                <WifiOff className="w-3.5 h-3.5 text-rose-400" />
+              )}
 
-              <span className={cn(
-                wsStatus === "connected" ? "text-emerald-400" :
-                wsStatus === "connecting" ? "text-blue-400" :
-                "text-rose-400"
-              )}>
-                {wsStatus === "connected" ? "Connected" :
-                 wsStatus === "connecting" ? t("terminalModal.connecting") :
-                 wsStatus === "error" ? t("terminalModal.fetchError") :
-                 t("terminalModal.disconnected")}
+              <span
+                className={cn(
+                  wsStatus === 'connected'
+                    ? 'text-emerald-400'
+                    : wsStatus === 'connecting'
+                      ? 'text-blue-400'
+                      : 'text-rose-400',
+                )}
+              >
+                {wsStatus === 'connected'
+                  ? 'Connected'
+                  : wsStatus === 'connecting'
+                    ? t('terminalModal.connecting')
+                    : wsStatus === 'error'
+                      ? t('terminalModal.fetchError')
+                      : t('terminalModal.disconnected')}
               </span>
             </div>
           </div>
@@ -179,7 +205,7 @@ export function TerminalModal({ containerId, containerName, onClose }: TerminalM
               size="sm"
               onClick={onClose}
               className="h-8 w-8 p-0"
-              title={t("terminalModal.close")}
+              title={t('terminalModal.close')}
             >
               <X className="w-4 h-4" />
             </Button>
