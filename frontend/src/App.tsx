@@ -9,6 +9,8 @@ import { useTranslation } from 'react-i18next';
 import { DesktopView } from './components/DesktopView';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { WebView } from './components/WebView';
+import { LogsModal } from './components/LogsModal';
+import { TerminalModal } from './components/TerminalModal';
 import { useContainers } from './hooks/useContainers';
 import { useDebounce } from './hooks/useDebounce';
 import './index.css';
@@ -52,6 +54,15 @@ function App() {
   const [collapsedWorkspaces, setCollapsedWorkspaces] = useState<
     Record<string, boolean>
   >({});
+
+  const [selectedLogContainer, setSelectedLogContainer] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [selectedTerminalContainer, setSelectedTerminalContainer] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -302,6 +313,10 @@ function App() {
             onToggleCollapse={toggleCollapse}
             performSingleAction={performSingleAction}
             performBatchAction={performBatchAction}
+            onOpenLogs={(id, name) => setSelectedLogContainer({ id, name })}
+            onOpenTerminal={(id, name) =>
+              setSelectedTerminalContainer({ id, name })
+            }
           />
         ) : (
           <WebView
@@ -310,9 +325,29 @@ function App() {
             onToggleCollapse={toggleCollapse}
             performSingleAction={performSingleAction}
             performBatchAction={performBatchAction}
+            onOpenLogs={(id, name) => setSelectedLogContainer({ id, name })}
+            onOpenTerminal={(id, name) =>
+              setSelectedTerminalContainer({ id, name })
+            }
           />
         )}
       </div>
+
+      {/* Modals */}
+      {selectedLogContainer && (
+        <LogsModal
+          containerId={selectedLogContainer.id}
+          containerName={selectedLogContainer.name}
+          onClose={() => setSelectedLogContainer(null)}
+        />
+      )}
+      {selectedTerminalContainer && (
+        <TerminalModal
+          containerId={selectedTerminalContainer.id}
+          containerName={selectedTerminalContainer.name}
+          onClose={() => setSelectedTerminalContainer(null)}
+        />
+      )}
     </div>
   );
 }

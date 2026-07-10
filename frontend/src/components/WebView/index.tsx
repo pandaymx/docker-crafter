@@ -17,6 +17,8 @@ interface WebViewProps {
     containerIds?: string[],
     projectName?: string,
   ) => Promise<ContainerActionResults>;
+  onOpenLogs?: (id: string, name: string) => void;
+  onOpenTerminal?: (id: string, name: string) => void;
 }
 
 export const WebView: React.FC<WebViewProps> = ({
@@ -25,6 +27,8 @@ export const WebView: React.FC<WebViewProps> = ({
   onToggleCollapse,
   performSingleAction,
   performBatchAction,
+  onOpenLogs,
+  onOpenTerminal,
 }) => {
   return (
     <div className="flex flex-col h-full w-full bg-slate-950 font-sans">
@@ -35,6 +39,8 @@ export const WebView: React.FC<WebViewProps> = ({
           onToggleCollapse={onToggleCollapse}
           performSingleAction={performSingleAction}
           performBatchAction={performBatchAction}
+          onOpenLogs={onOpenLogs}
+          onOpenTerminal={onOpenTerminal}
         />
       </div>
     </div>
