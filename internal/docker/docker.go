@@ -9,16 +9,6 @@ import (
 	"github.com/docker/docker/client"
 )
 
-// ContainerInfo represents the structured information for a Docker container.
-type ContainerInfo struct {
-	ID     string            `json:"id"`
-	Name   string            `json:"name"`
-	Image  string            `json:"image"`
-	State  string            `json:"state"`
-	Status string            `json:"status"`
-	Labels map[string]string `json:"labels"`
-}
-
 // DockerClient interface abstracts the Docker client for easier testing.
 type DockerClient interface {
 	ContainerList(ctx context.Context, options container.ListOptions) ([]container.Summary, error)
@@ -69,18 +59,6 @@ func (c *Client) GetContainers(ctx context.Context) ([]ContainerInfo, error) {
 	}
 
 	return response, nil
-}
-
-// ActionError represents an error that occurred during a container action.
-type ActionError struct {
-	ContainerID string `json:"container_id"`
-	Error       string `json:"error"`
-}
-
-// ContainerActionResults contains the results of a batch container action.
-type ContainerActionResults struct {
-	Successful []string      `json:"successful"`
-	Failed     []ActionError `json:"failed"`
 }
 
 // PerformAction executes a specified action (start, stop, restart) on a list of containers.
