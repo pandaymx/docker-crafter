@@ -1,0 +1,40 @@
+name: Makefile CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 1. 安装并配置 Go 环境（因为你的后端是用 Go 写的）
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22' # 或者是你项目实际使用的 Go 版本，会自动读取 go.mod
+        cache: true
+
+    # 2. 安装并配置 Bun 环境（因为你的前端打包和校验是用 Bun）
+    - name: Set up Bun
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest
+
+    # 3. 执行代码格式化和静态校验 (调用你 Makefile 中的 make verify)
+    - name: Verify code formatting and linting
+      run: make verify
+
+    # 4. 运行单元测试 (调用你 Makefile 中的 make test)
+    - name: Run tests
+      run: make test
+
+    # 5. 验证是否能成功编译 (调用你 Makefile 中的 make build)
+    - name: Build project
+      run: make build
