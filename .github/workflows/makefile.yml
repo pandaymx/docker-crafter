@@ -27,6 +27,11 @@ jobs:
       with:
         bun-version: latest
 
+    # 2.1 安装前端依赖（make verify / make build 中的 bun run lint、bun run build 依赖 node_modules）
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: bun install --frozen-lockfile
+
     # 3. 执行代码格式化和静态校验 (调用你 Makefile 中的 make verify)
     - name: Verify code formatting and linting
       run: make verify
