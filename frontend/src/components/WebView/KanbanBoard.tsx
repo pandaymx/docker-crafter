@@ -18,6 +18,8 @@ interface KanbanBoardProps {
     containerIds?: string[],
     projectName?: string,
   ) => Promise<ContainerActionResults>;
+  onOpenLogs?: (id: string, name: string) => void;
+  onOpenTerminal?: (id: string, name: string) => void;
 }
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({
@@ -26,6 +28,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onToggleCollapse,
   performSingleAction,
   performBatchAction,
+  onOpenLogs,
+  onOpenTerminal,
 }) => {
   const { t } = useTranslation();
 
@@ -57,10 +61,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               performSingleAction(id, 'restart', name)
             }
             onContainerLogs={(id, name) => {
-              console.log(`Open logs for ${name} (${id})`);
+              onOpenLogs?.(id, name);
             }}
             onContainerTerminal={(id, name) => {
-              console.log(`Open terminal for ${name} (${id})`);
+              onOpenTerminal?.(id, name);
             }}
           />
         ))}

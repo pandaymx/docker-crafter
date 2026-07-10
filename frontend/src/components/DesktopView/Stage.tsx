@@ -18,6 +18,8 @@ interface StageProps {
     containerIds?: string[],
     projectName?: string,
   ) => Promise<ContainerActionResults>;
+  onOpenLogs?: (id: string, name: string) => void;
+  onOpenTerminal?: (id: string, name: string) => void;
 }
 
 export const Stage: React.FC<StageProps> = ({
@@ -26,6 +28,8 @@ export const Stage: React.FC<StageProps> = ({
   onToggleCollapse,
   performSingleAction,
   performBatchAction,
+  onOpenLogs,
+  onOpenTerminal,
 }) => {
   const { t } = useTranslation();
 
@@ -64,12 +68,10 @@ export const Stage: React.FC<StageProps> = ({
             performSingleAction(id, 'restart', name)
           }
           onContainerLogs={(id, name) => {
-            // Placeholder: Could navigate to a logs view or open a modal
-            console.log(`Open logs for ${name} (${id})`);
+            onOpenLogs?.(id, name);
           }}
           onContainerTerminal={(id, name) => {
-            // Placeholder: Could navigate to a terminal view or open a modal
-            console.log(`Open terminal for ${name} (${id})`);
+            onOpenTerminal?.(id, name);
           }}
         />
       </div>

@@ -18,6 +18,8 @@ interface DesktopViewProps {
     containerIds?: string[],
     projectName?: string,
   ) => Promise<ContainerActionResults>;
+  onOpenLogs?: (id: string, name: string) => void;
+  onOpenTerminal?: (id: string, name: string) => void;
 }
 
 export const DesktopView: React.FC<DesktopViewProps> = ({
@@ -26,6 +28,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
   onToggleCollapse,
   performSingleAction,
   performBatchAction,
+  onOpenLogs,
+  onOpenTerminal,
 }) => {
   const [selectedWs, setSelectedWs] = useState<string | null>(null);
 
@@ -77,6 +81,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({
         }
         performSingleAction={performSingleAction}
         performBatchAction={performBatchAction}
+        onOpenLogs={onOpenLogs}
+        onOpenTerminal={onOpenTerminal}
       />
     </div>
   );
