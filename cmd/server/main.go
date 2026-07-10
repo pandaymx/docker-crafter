@@ -14,12 +14,38 @@ import (
 	"fmt"
 	"io/fs"
 	"strings"
+	"time"
 
 	"docker-crafter/internal/ws"
 	"github.com/gin-contrib/secure"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
+
+func startKeepAlive(ctx context.Context, conn *websocket.Conn) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(ctx)
+	conn.SetReadDeadline(time.Now().Add(40 * time.Second))
+	conn.SetPongHandler(func(appData string) error {
+		conn.SetReadDeadline(time.Now().Add(40 * time.Second))
+		return nil
+	})
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second)); err != nil {
+					cancel()
+					return
+				}
+			}
+		}
+	}()
+	return ctx, cancel
+}
 
 func main() {
 	cfg, err := config.Load()
@@ -154,6 +180,64 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"message": "Action performed successfully"})
 		})
 
+		api.POST("/containers/:id/exec", activityTracker, func(c *gin.Context) {
+			if dockerService == nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Docker service is not initialized"})
+				return
+			}
+
+			id := c.Param("id")
+			var req struct {
+				Cmd []string `json:"cmd"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+
+			stdout, stderr, exitCode, err := dockerService.ContainerExec(c.Request.Context(), id, req.Cmd)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"stdout":   stdout,
+				"stderr":   stderr,
+				"exitCode": exitCode,
+			})
+		})
+
+		api.GET("/containers/:id/terminal", activityTracker, func(c *gin.Context) {
+			if dockerService == nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Docker service is not initialized"})
+				return
+			}
+
+			id := c.Param("id")
+			shell := c.DefaultQuery("shell", "auto")
+
+			upgrader := websocket.Upgrader{
+				CheckOrigin: func(r *http.Request) bool { return true },
+			}
+			conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+			if err != nil {
+				logger.Errorf("WebSocket upgrade failed: %v", err)
+				return
+			}
+			defer conn.Close()
+
+			ctx, cancel := context.WithCancel(c.Request.Context())
+			defer cancel()
+
+			ctx, cancel = startKeepAlive(ctx, conn)
+			defer cancel()
+
+			err = dockerService.StreamTerminal(ctx, id, shell, conn)
+			if err != nil {
+				conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error: %v", err)))
+			}
+		})
+
 		api.GET("/containers/:id/logs", activityTracker, func(c *gin.Context) {
 			if dockerService == nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -215,6 +299,7 @@ func main() {
 				conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error: %v", err)))
 			}
 		})
+
 		api.GET("/projects", activityTracker, func(c *gin.Context) {
 			if dockerService == nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
