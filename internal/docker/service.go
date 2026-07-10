@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/docker/docker/pkg/stdcopy"
 	"io"
 	"net/http"
 	"os"
@@ -22,7 +23,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/gorilla/websocket"
 )
 
@@ -579,7 +579,52 @@ func (s *dockerService) ContainerAction(ctx context.Context, id string, action s
 }
 
 func (s *dockerService) GetContainerLogs(ctx context.Context, id string, tail string) (string, error) {
-	return "", fmt.Errorf("not implemented")
+	for _, cli := range s.clients {
+		inspect, err := cli.ContainerInspect(ctx, id)
+		if err != nil {
+			continue // Not on this engine
+		}
+
+		reader, err := cli.ContainerLogs(ctx, id, container.LogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Tail:       tail,
+			Timestamps: false,
+		})
+		if err != nil {
+			return "", err
+		}
+		defer reader.Close()
+
+		if inspect.Config.Tty {
+			// TTY mode: simple read
+			buf := new(bytes.Buffer)
+			_, err = io.Copy(buf, reader)
+			if err != nil && err != io.EOF {
+				return "", err
+			}
+			return buf.String(), nil
+		} else {
+			// Non-TTY mode: stdcopy
+			var stdoutBuf, stderrBuf bytes.Buffer
+			_, err = stdcopy.StdCopy(&stdoutBuf, &stderrBuf, reader)
+			if err != nil && err != io.EOF {
+				return "", err
+			}
+
+			result := stdoutBuf.String()
+			stderrStr := stderrBuf.String()
+			if stderrStr != "" {
+				if result != "" {
+					result += "\n--- STDERR ---\n" + stderrStr
+				} else {
+					result = stderrStr
+				}
+			}
+			return result, nil
+		}
+	}
+	return "", fmt.Errorf("container %s not found on any connected engine", id)
 }
 
 func (s *dockerService) ContainerExec(ctx context.Context, id string, cmd []string) (stdout string, stderr string, exitCode int, err error) {
@@ -629,8 +674,105 @@ func (s *dockerService) ContainerExec(ctx context.Context, id string, cmd []stri
 	return outBuf.String(), errBuf.String(), execInspect.ExitCode, nil
 }
 
+// LogMessage represents a line of log in WebSocket stream
+type LogMessage struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
+}
+
+// WSWriter wraps a WebSocketWriter to implement io.Writer
+type WSWriter struct {
+	conn       WebSocketWriter
+	streamType string
+}
+
+func (w *WSWriter) Write(p []byte) (n int, err error) {
+	// Strip trailing newlines
+	dataStr := string(p)
+	dataStr = strings.TrimRight(dataStr, "\r\n")
+
+	msg := LogMessage{Type: w.streamType, Data: dataStr}
+	jsonMsg, err := json.Marshal(msg)
+	if err != nil {
+		return 0, err
+	}
+
+	// 1 = TextMessage (websocket.TextMessage)
+	err = w.conn.WriteMessage(1, jsonMsg)
+	if err != nil {
+		return 0, err
+	}
+	return len(p), nil
+}
+
 func (s *dockerService) StreamContainerLogs(ctx context.Context, id string, tail string, ws WebSocketWriter) error {
-	return fmt.Errorf("not implemented")
+	s.reqMutex.Lock()
+	s.wsCount++
+	s.reqMutex.Unlock()
+
+	defer func() {
+		s.reqMutex.Lock()
+		s.wsCount--
+		s.reqMutex.Unlock()
+	}()
+
+	for _, cli := range s.clients {
+		inspect, err := cli.ContainerInspect(ctx, id)
+		if err != nil {
+			continue // Not on this engine
+		}
+
+		reader, err := cli.ContainerLogs(ctx, id, container.LogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Tail:       tail,
+			Follow:     true,
+			Timestamps: false,
+		})
+		if err != nil {
+			return err
+		}
+		defer reader.Close()
+
+		go func() {
+			<-ctx.Done()
+			reader.Close()
+		}()
+
+		if inspect.Config.Tty {
+			// TTY mode
+			buf := make([]byte, 4096)
+			for {
+				n, err := reader.Read(buf)
+				if n > 0 {
+					dataStr := string(buf[:n])
+					dataStr = strings.TrimRight(dataStr, "\r\n")
+
+					msg := LogMessage{Type: "stdout", Data: dataStr}
+					jsonMsg, _ := json.Marshal(msg)
+					if writeErr := ws.WriteMessage(1, jsonMsg); writeErr != nil {
+						return writeErr
+					}
+				}
+				if err != nil {
+					if err == io.EOF {
+						return nil
+					}
+					return err
+				}
+			}
+		} else {
+			// Non-TTY mode
+			stdoutWriter := &WSWriter{conn: ws, streamType: "stdout"}
+			stderrWriter := &WSWriter{conn: ws, streamType: "stderr"}
+			_, err = stdcopy.StdCopy(stdoutWriter, stderrWriter, reader)
+			if err != nil && err != io.EOF {
+				return err
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("container %s not found on any connected engine", id)
 }
 
 func (s *dockerService) StreamTerminal(ctx context.Context, id string, shell string, ws WebSocketConn) error {
