@@ -10,9 +10,11 @@ import { DesktopView } from './components/DesktopView';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { LogsModal } from './components/LogsModal';
 import { TerminalModal } from './components/TerminalModal';
+import { ToastContainer } from './components/ui/Toast';
 import { WebView } from './components/WebView';
 import { useContainers } from './hooks/useContainers';
 import { useDebounce } from './hooks/useDebounce';
+import { ToastProvider } from './hooks/useToast';
 import './index.css';
 
 // Type declaration for Tauri window variable mock
@@ -352,4 +354,11 @@ function App() {
   );
 }
 
-export default App;
+export default function AppWithProvider() {
+  return (
+    <ToastProvider>
+      <App />
+      <ToastContainer />
+    </ToastProvider>
+  );
+}
