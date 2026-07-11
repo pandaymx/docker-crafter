@@ -2,6 +2,7 @@ import { ChevronDown, Globe } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../utils/cn';
+import { GlassPanel } from './ui/GlassPanel';
 
 const LANGUAGES = [
   { code: 'zh', name: '简体中文', supported: true },
@@ -32,7 +33,7 @@ export function LanguageSwitcher() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1 text-xs font-mono text-slate-400 hover:text-slate-200 transition-colors"
+        className="flex items-center gap-1 text-xs font-mono text-slate-400 transition-all duration-300 hover:text-cyan-300 hover:drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]"
       >
         <Globe className="w-4 h-4" />
         {currentLang.code.toUpperCase()}
@@ -41,29 +42,31 @@ export function LanguageSwitcher() {
         />
       </button>
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-32 bg-slate-900 border border-slate-800 rounded-lg shadow-xl overflow-hidden z-50">
-          {LANGUAGES.map((lang) => (
-            <button
-              key={lang.code}
-              onClick={() => {
-                if (lang.supported) {
-                  i18n.changeLanguage(lang.code);
-                  localStorage.setItem('docker-crafter-lang', lang.code);
-                  setIsOpen(false);
-                }
-              }}
-              className={cn(
-                'w-full text-left px-3 py-2 text-xs hover:bg-slate-800 transition-colors',
-                {
-                  'text-cyan-400': lang.code === i18n.language,
-                  'text-slate-300': lang.code !== i18n.language,
-                },
-              )}
-            >
-              {lang.name}
-            </button>
-          ))}
-        </div>
+        <GlassPanel className="absolute right-0 mt-2 w-32 z-50 p-0 overflow-hidden border-cyan-500/40 ring-1 ring-cyan-400/30 shadow-[0_0_12px_rgba(34,211,238,0.45)] backdrop-blur bg-slate-950/60">
+          {LANGUAGES.map((lang) => {
+            const isSelected = lang.code === i18n.language;
+            return (
+              <button
+                key={lang.code}
+                onClick={() => {
+                  if (lang.supported) {
+                    i18n.changeLanguage(lang.code);
+                    localStorage.setItem('docker-crafter-lang', lang.code);
+                    setIsOpen(false);
+                  }
+                }}
+                className={cn(
+                  'w-full text-left px-3 py-2 text-xs transition-all duration-300 relative',
+                  isSelected
+                    ? 'text-cyan-300 bg-cyan-500/10 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] border-l-2 border-cyan-400'
+                    : 'text-slate-300 hover:bg-cyan-400/10 hover:text-cyan-100 hover:drop-shadow-[0_0_5px_rgba(34,211,238,0.5)] border-l-2 border-transparent',
+                )}
+              >
+                {lang.name}
+              </button>
+            );
+          })}
+        </GlassPanel>
       )}
     </div>
   );
