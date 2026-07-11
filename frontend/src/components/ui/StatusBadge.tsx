@@ -10,7 +10,8 @@ export interface StatusBadgeProps extends React.HTMLAttributes<HTMLDivElement> {
     | 'unknown'
     | 'running-all'
     | 'running-partial'
-    | 'stopped-all';
+    | 'stopped-all'
+    | 'anomalous';
   showDot?: boolean;
 }
 
@@ -24,6 +25,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   const isRunning = status === 'running' || status === 'running-all';
   const isPartial = status === 'running-partial';
   const isStoppedAll = status === 'stopped-all';
+  const isAnomalous = status === 'anomalous';
   return (
     <div
       className={cn(
@@ -37,6 +39,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
           'bg-red-950/30 text-red-400 border-red-900/50': status === 'error',
           'bg-slate-800 text-slate-400 border-slate-700/50':
             status === 'unknown',
+          'bg-amber-950/30 text-red-400 border-red-900/50': isAnomalous,
         },
         className,
       )}
@@ -44,13 +47,14 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     >
       {showDot && (
         <div className="relative flex h-2 w-2 shrink-0 items-center justify-center">
-          {(isRunning || isPartial) && (
+          {(isRunning || isPartial || isAnomalous) && (
             <span
               className={cn(
                 'absolute inline-flex h-full w-full rounded-full opacity-40 animate-pulse',
                 {
                   'bg-emerald-500': isRunning,
                   'bg-amber-500': isPartial,
+                  'bg-red-500': isAnomalous,
                 },
               )}
             />
@@ -62,7 +66,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
               'bg-slate-500 h-2 w-2': isStoppedAll || status === 'unknown',
               'bg-rose-500 h-2 w-2':
                 status === 'stopped' || status === 'exited',
-              'bg-red-500 h-2 w-2': status === 'error',
+              'bg-red-500 h-2 w-2': status === 'error' || isAnomalous,
             })}
           />
         </div>

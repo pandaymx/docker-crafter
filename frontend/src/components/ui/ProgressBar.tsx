@@ -5,18 +5,26 @@ export interface ProgressBarProps extends React.HTMLAttributes<HTMLDivElement> {
   value: number;
   max?: number;
   colorType?: 'cpu' | 'memory' | 'default';
+  isOffline?: boolean;
+  isAnomalous?: boolean;
 }
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({
   value,
   max = 100,
   colorType = 'default',
+  isOffline = false,
+  isAnomalous = false,
   className,
   ...props
 }) => {
   const percentage = Math.min((value / max) * 100, 100);
   let barColorClass = 'bg-cyan-500';
-  if (colorType === 'cpu') {
+  if (isOffline) {
+    barColorClass = 'bg-slate-600 opacity-50';
+  } else if (isAnomalous) {
+    barColorClass = 'bg-amber-500';
+  } else if (colorType === 'cpu') {
     barColorClass =
       percentage > 80
         ? 'bg-rose-500'
