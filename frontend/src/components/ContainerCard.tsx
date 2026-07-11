@@ -82,6 +82,12 @@ export const ContainerCard: React.FC<ContainerCardProps> = ({
 
   const cpuUsage = isRunning ? container.cpuUsage || 0 : 0;
 
+  const isAnomalous =
+    (container.state === 'exited' &&
+      container.status.match(/\((\d+)\)/)?.[1] !== '0') ||
+    container.status.toLowerCase().includes('unhealthy') ||
+    container.status.toLowerCase().includes('error');
+
   return (
     <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 flex flex-col gap-4 font-mono transition-colors hover:border-slate-600/50">
       {/* Header */}
@@ -93,7 +99,11 @@ export const ContainerCard: React.FC<ContainerCardProps> = ({
           >
             {container.name}
           </span>
-          <StatusBadge status={isRunning ? 'running' : 'stopped'} />
+          <StatusBadge
+            status={
+              isAnomalous ? 'anomalous' : isRunning ? 'running' : 'stopped'
+            }
+          />
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {isRunning ? (
@@ -157,7 +167,12 @@ export const ContainerCard: React.FC<ContainerCardProps> = ({
               {isRunning ? `${cpuUsage.toFixed(1)}%` : '0.0%'}
             </span>
           </div>
-          {isRunning && <ProgressBar value={cpuUsage} colorType="cpu" />}
+          <ProgressBar
+            value={cpuUsage}
+            colorType="cpu"
+            isOffline={!isRunning}
+            isAnomalous={isAnomalous}
+          />
         </div>
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between text-xs">
@@ -168,9 +183,12 @@ export const ContainerCard: React.FC<ContainerCardProps> = ({
                 : '0 B / 0 B'}
             </span>
           </div>
-          {isRunning && (
-            <ProgressBar value={memoryPercent} colorType="memory" />
-          )}
+          <ProgressBar
+            value={memoryPercent}
+            colorType="memory"
+            isOffline={!isRunning}
+            isAnomalous={isAnomalous}
+          />
         </div>
       </div>
 
