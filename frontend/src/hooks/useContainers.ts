@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../hooks/useToast';
 import type { ProjectWorkspace } from '../types';
-import { useToast } from './useToast';
 import { getApiBaseUrl } from '../utils/api';
 
 export interface ActionError {

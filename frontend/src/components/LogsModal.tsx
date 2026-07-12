@@ -1,9 +1,9 @@
 import { ArrowDownToLine, Loader2, Wifi, WifiOff, X } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getWsBaseUrl } from '../utils/api';
 import { cn } from '../utils/cn';
 import { Button } from './ui/Button';
-import { getWsBaseUrl } from '../utils/api';
 
 export interface LogsModalProps {
   containerId: string;

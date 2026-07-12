@@ -10,9 +10,9 @@ import {
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import '@xterm/xterm/css/xterm.css';
+import { getWsBaseUrl } from '../utils/api';
 import { cn } from '../utils/cn';
 import { Button } from './ui/Button';
-import { getWsBaseUrl } from '../utils/api';
 
 export interface TerminalModalProps {
   containerId: string;
