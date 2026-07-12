@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import '@xterm/xterm/css/xterm.css';
 import { cn } from '../utils/cn';
 import { Button } from './ui/Button';
+import { getWsBaseUrl } from '../utils/api';
 
 export interface TerminalModalProps {
   containerId: string;
@@ -70,9 +71,9 @@ export function TerminalModal({
       }
 
       setWsStatus('connecting');
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsBase = getWsBaseUrl();
       const shellParam = shellType !== 'auto' ? `?shell=${shellType}` : '';
-      const url = `${protocol}//${window.location.host}/api/v1/containers/${containerId}/terminal${shellParam}`;
+      const url = `${wsBase}/api/v1/containers/${containerId}/terminal${shellParam}`;
 
       const ws = new WebSocket(url);
       ws.binaryType = 'arraybuffer'; // Important for binary messages

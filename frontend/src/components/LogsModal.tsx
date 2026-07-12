@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../utils/cn';
 import { Button } from './ui/Button';
+import { getWsBaseUrl } from '../utils/api';
 
 export interface LogsModalProps {
   containerId: string;
@@ -93,8 +94,8 @@ export function LogsModal({
 
     setWsStatus('connecting');
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = `${protocol}//${window.location.host}/api/v1/containers/${containerId}/logs/stream?tail=100`;
+    const wsBase = getWsBaseUrl();
+    const url = `${wsBase}/api/v1/containers/${containerId}/logs/stream?tail=100`;
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
