@@ -1,10 +1,10 @@
 # docker-crafter
 🐳 Docker 工作区管理面板
 
-![CI Status](https://github.com/your-org/docker-crafter/actions/workflows/ci.yml/badge.svg)
+![CI Status](https://github.com/pandaymx/docker-crafter/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
-![Go Version](https://img.shields.io/github/go-mod/go-version/your-org/docker-crafter)
-![Docker Image Size (tag)](https://img.shields.io/docker/image-size/your-org/docker-crafter/latest)
+![Go Version](https://img.shields.io/github/go-mod/go-version/pandaymx/docker-crafter)
+![GitHub Release](https://img.shields.io/github/v/release/pandaymx/docker-crafter)
 
 ## 📌 项目简介 (Introduction)
 `docker-crafter` 是一个轻量级的跨平台 Docker 工作区管理面板，旨在通过直观的界面统一管理本地及远程的多引擎 Docker 容器，解决多项目混杂导致的容器管理难题。
@@ -47,16 +47,20 @@ make run-frontend
 
 ## 🐳 Docker 部署 (Docker Deployment)
 
-基于提供的 `Dockerfile`，你可以构建并启动：
+可以直接拉取由 CI 发布到 GHCR 的官方镜像，或基于提供的 `Dockerfile` 自行构建：
 
 ```bash
+# 方式一：拉取官方镜像 (GitHub Container Registry)
+docker pull ghcr.io/pandaymx/docker-crafter:latest
+
+# 方式二：本地构建
 docker build -t docker-crafter .
 
 docker run -d \
   --name docker-crafter \
   -p 8080:8080 \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  -v ./data:/app/data \
+  -v "$(pwd)/data:/app/data" \
   docker-crafter
 ```
 *(注：挂载 `/var/run/docker.sock` 以及确保宿主权限正确，是应用连接 Docker 的前提条件。)*
