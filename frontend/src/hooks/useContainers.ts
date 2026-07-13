@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../hooks/useToast';
 import type { ProjectWorkspace } from '../types';
-import { useToast } from './useToast';
+import { getApiBaseUrl } from '../utils/api';
 
 export interface ActionError {
   container_id: string;
@@ -23,7 +24,8 @@ export function useContainers() {
 
   const fetchWorkspaces = useCallback(async () => {
     try {
-      const response = await fetch('/api/v1/projects');
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/v1/projects`);
       if (!response.ok) {
         throw new Error('Failed to fetch projects');
       }
@@ -50,11 +52,15 @@ export function useContainers() {
   ) => {
     setActionLoading(true);
     try {
-      const response = await fetch(`/api/v1/containers/${id}/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-      });
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(
+        `${baseUrl}/api/v1/containers/${id}/action`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action }),
+        },
+      );
       if (!response.ok) {
         throw new Error(`Failed to perform ${action} on ${name}`);
       }
@@ -97,7 +103,8 @@ export function useContainers() {
       if (containerIds) body.container_ids = containerIds;
       if (projectName) body.projectName = projectName;
 
-      const response = await fetch('/api/v1/containers/action', {
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/v1/containers/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
